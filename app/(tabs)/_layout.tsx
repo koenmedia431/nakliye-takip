@@ -84,6 +84,11 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* reports.tsx dosyası var ama tab'da gösterilmesin */}
+      <Tabs.Screen
+        name="reports"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }
