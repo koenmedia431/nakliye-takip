@@ -23,8 +23,7 @@ export default function DashboardScreen() {
 
   const thisMonth = useMemo(() => {
     const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return month;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }, []);
 
   const monthlyTrips = useMemo(
@@ -37,25 +36,28 @@ export default function DashboardScreen() {
     [fuelEntries, thisMonth]
   );
 
+  // Aylık toplam km (seferlerden)
   const totalKm = useMemo(
-    () => monthlyTrips.reduce((sum: number, t: Trip) => sum + (t.distance || 0), 0),
+    () => monthlyTrips.reduce((sum: number, t: Trip) => sum + (t.totalKm || 0), 0),
     [monthlyTrips]
   );
 
+  // Yakıt hakedişi (seferlerden hesaplı)
+  const totalFuelLitersFromTrips = useMemo(
+    () => monthlyTrips.reduce((sum: number, t: Trip) => sum + (t.fuelLiters || 0), 0),
+    [monthlyTrips]
+  );
+
+  // Gerçek yakıt alımı (yakıt kayıtlarından)
   const totalFuelCost = useMemo(
     () => monthlyFuel.reduce((sum: number, f: FuelEntry) => sum + (f.totalCost || 0), 0),
     [monthlyFuel]
   );
 
-  const totalLiters = useMemo(
+  const totalLitersActual = useMemo(
     () => monthlyFuel.reduce((sum: number, f: FuelEntry) => sum + (f.liters || 0), 0),
     [monthlyFuel]
   );
-
-  const avgConsumption = useMemo(() => {
-    if (totalKm === 0 || totalLiters === 0) return 0;
-    return (totalLiters / totalKm) * 100;
-  }, [totalKm, totalLiters]);
 
   const recentTrips = useMemo(() => trips.slice(0, 5), [trips]);
 
@@ -81,7 +83,9 @@ export default function DashboardScreen() {
       {/* Greeting */}
       <View style={styles.greetingRow}>
         <View>
-          <Text style={styles.greeting}>Merhaba, {userProfile?.displayName?.split(' ')[0] || 'Kullanıcı'} 👋</Text>
+          <Text style={styles.greeting}>
+            Merhaba, {userProfile?.displayName?.split(' ')[0] || 'Kullanıcı'} 👋
+          </Text>
           <Text style={styles.subGreeting}>{monthName} ayı özeti</Text>
         </View>
         <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
@@ -89,11 +93,42 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Sürücü bilgi kartı */}
+      {userProfile?.role === 'driver' && userProfile.vehiclePlate && (
+        <View style={styles.driverInfoCard}>
+          <View style={styles.driverInfoItem}>
+            <Ionicons name="car" size={18} color={Colors.primary} />
+            <View>
+              <Text style={styles.driverInfoLabel}>Atanmış Araç</Text>
+              <Text style={styles.driverInfoValue}>{userProfile.vehiclePlate}</Text>
+            </View>
+          </View>
+          {userProfile.region ? (
+            <View style={styles.driverInfoItem}>
+              <Ionicons name="location" size={18} color={Colors.success} />
+              <View>
+                <Text style={styles.driverInfoLabel}>Bölge</Text>
+                <Text style={styles.driverInfoValue}>{userProfile.region}</Text>
+              </View>
+            </View>
+          ) : null}
+          {userProfile.fuelRate ? (
+            <View style={styles.driverInfoItem}>
+              <Ionicons name="flame" size={18} color={Colors.fuel} />
+              <View>
+                <Text style={styles.driverInfoLabel}>Hakedis Oranı</Text>
+                <Text style={styles.driverInfoValue}>{userProfile.fuelRate} lt/100km</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      )}
+
       {/* Stats Grid */}
-      <Text style={styles.sectionTitle}>Bu Ay</Text>
+      <Text style={styles.sectionTitle}>Bu Ay — {monthName}</Text>
       <View style={styles.statsGrid}>
         <StatCard
-          title="Toplam KM"
+          title="Aylık KM"
           value={`${totalKm.toLocaleString('tr-TR')} km`}
           subtitle={`${monthlyTrips.length} sefer`}
           icon="navigate-circle"
@@ -101,9 +136,9 @@ export default function DashboardScreen() {
           bgColor={Colors.tripLight}
         />
         <StatCard
-          title="Yakıt Gideri"
-          value={`₺${totalFuelCost.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-          subtitle={`${totalLiters.toFixed(1)} litre`}
+          title="Yakıt Hakedişi"
+          value={`${totalFuelLitersFromTrips.toFixed(1)} lt`}
+          subtitle={`${monthlyTrips.length} seferden`}
           icon="flame"
           color={Colors.fuel}
           bgColor={Colors.fuelLight}
@@ -111,21 +146,32 @@ export default function DashboardScreen() {
       </View>
       <View style={styles.statsGrid}>
         <StatCard
-          title="Ort. Tüketim"
-          value={avgConsumption > 0 ? `${avgConsumption.toFixed(1)} lt/100` : '—'}
-          subtitle="100 km başına"
-          icon="speedometer"
+          title="Yakıt Gideri"
+          value={`₺${totalFuelCost.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          subtitle={`${totalLitersActual.toFixed(1)} litre alındı`}
+          icon="cash"
           color={Colors.success}
           bgColor={Colors.successLight}
         />
-        <StatCard
-          title="Aktif Araç"
-          value={`${vehicles.filter(v => v.active).length}`}
-          subtitle={`${vehicles.length} toplam`}
-          icon="car"
-          color={Colors.vehicle}
-          bgColor={Colors.vehicleLight}
-        />
+        {userProfile?.role === 'admin' ? (
+          <StatCard
+            title="Aktif Araç"
+            value={`${vehicles.filter(v => v.active).length}`}
+            subtitle={`${vehicles.length} toplam`}
+            icon="car"
+            color={Colors.vehicle}
+            bgColor={Colors.vehicleLight}
+          />
+        ) : (
+          <StatCard
+            title="Bu Ay Sefer"
+            value={`${monthlyTrips.length}`}
+            subtitle={`${totalKm.toLocaleString('tr-TR')} km`}
+            icon="navigate"
+            color={Colors.primary}
+            bgColor={Colors.primaryLight}
+          />
+        )}
       </View>
 
       {/* Quick Actions */}
@@ -166,7 +212,7 @@ export default function DashboardScreen() {
       <View style={styles.recentHeader}>
         <Text style={styles.sectionTitle}>Son Seferler</Text>
         <TouchableOpacity onPress={() => router.push('/(tabs)/trips')}>
-          <Text style={styles.seeAll}>Tümü</Text>
+          <Text style={styles.seeAll}>Tümü →</Text>
         </TouchableOpacity>
       </View>
 
@@ -181,35 +227,28 @@ export default function DashboardScreen() {
             key={trip.id}
             style={styles.tripCard}
             onPress={() => router.push(`/trip/${trip.id}`)}
+            activeOpacity={0.85}
           >
             <View style={styles.tripLeft}>
-              <View style={styles.tripIconBox}>
-                <Ionicons name="navigate" size={18} color={Colors.trip} />
+              <View style={styles.plateBadge}>
+                <Text style={styles.plateBadgeText}>{trip.vehiclePlate}</Text>
               </View>
               <View>
-                <Text style={styles.tripRoute}>
-                  {trip.origin} → {trip.destination}
+                <Text style={styles.tripKmLine}>
+                  {trip.departureKm.toLocaleString('tr-TR')} → {trip.returnKm.toLocaleString('tr-TR')} km
                 </Text>
                 <Text style={styles.tripMeta}>
-                  {trip.vehiclePlate} • {trip.date}
+                  {trip.date}
+                  {trip.startTime ? ` • ${trip.startTime}` : ''}
+                  {trip.endTime ? ` – ${trip.endTime}` : ''}
                 </Text>
               </View>
             </View>
             <View style={styles.tripRight}>
-              <Text style={styles.tripKm}>{trip.distance.toLocaleString('tr-TR')} km</Text>
-              <View style={[
-                styles.tripStatusBadge,
-                trip.status === 'tamamlandı' ? styles.badgeSuccess :
-                  trip.status === 'devam ediyor' ? styles.badgeWarning : styles.badgeDanger
-              ]}>
-                <Text style={[
-                  styles.tripStatusText,
-                  trip.status === 'tamamlandı' ? styles.textSuccess :
-                    trip.status === 'devam ediyor' ? styles.textWarning : styles.textDanger
-                ]}>
-                  {trip.status}
-                </Text>
-              </View>
+              <Text style={styles.tripTotalKm}>{trip.totalKm.toLocaleString('tr-TR')} km</Text>
+              {trip.fuelLiters ? (
+                <Text style={styles.tripFuelLiters}>{trip.fuelLiters.toFixed(1)} lt</Text>
+              ) : null}
             </View>
           </TouchableOpacity>
         ))
@@ -243,8 +282,35 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     marginTop: 2,
   },
-  logoutBtn: {
-    padding: 8,
+  logoutBtn: { padding: 8 },
+  driverInfoCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  driverInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  driverInfoLabel: {
+    fontSize: 10,
+    color: Colors.textLight,
+    fontWeight: '500',
+  },
+  driverInfoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
   },
   sectionTitle: {
     fontSize: 16,
@@ -328,46 +394,40 @@ const styles = StyleSheet.create({
     gap: 12,
     flex: 1,
   },
-  tripIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: Colors.tripLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+  plateBadge: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
-  tripRoute: {
-    fontSize: 14,
+  plateBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 0.5,
+  },
+  tripKmLine: {
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.text,
     marginBottom: 2,
   },
   tripMeta: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textLight,
   },
   tripRight: {
     alignItems: 'flex-end',
-    gap: 6,
+    gap: 4,
   },
-  tripKm: {
+  tripTotalKm: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.trip,
   },
-  tripStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  tripFuelLiters: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.fuel,
   },
-  badgeSuccess: { backgroundColor: Colors.successLight },
-  badgeWarning: { backgroundColor: Colors.warningLight },
-  badgeDanger: { backgroundColor: Colors.dangerLight },
-  tripStatusText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  textSuccess: { color: Colors.success },
-  textWarning: { color: Colors.warning },
-  textDanger: { color: Colors.danger },
 });

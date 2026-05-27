@@ -9,100 +9,118 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../hooks/useData';
 import EmptyState from '../../components/EmptyState';
 import { Colors } from '../../constants/colors';
 import { Trip } from '../../types';
 
-const STATUS_FILTERS = ['Tümü', 'tamamlandı', 'devam ediyor', 'iptal'];
-
 export default function TripsScreen() {
   const { trips } = useData();
+  const { userProfile } = useAuth();
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Tümü');
 
   const filtered = useMemo(() => {
-    return trips.filter((t: Trip) => {
-      const matchSearch =
-        !search ||
-        t.origin.toLowerCase().includes(search.toLowerCase()) ||
-        t.destination.toLowerCase().includes(search.toLowerCase()) ||
-        t.vehiclePlate.toLowerCase().includes(search.toLowerCase()) ||
-        t.driverName.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === 'Tümü' || t.status === statusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [trips, search, statusFilter]);
+    if (!search) return trips;
+    const q = search.toLowerCase();
+    return trips.filter((t: Trip) =>
+      t.vehiclePlate.toLowerCase().includes(q) ||
+      t.driverName.toLowerCase().includes(q) ||
+      (t.region || '').toLowerCase().includes(q) ||
+      t.date.includes(q)
+    );
+  }, [trips, search]);
 
   const renderTrip = ({ item }: { item: Trip }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => router.push(`/trip/${item.id}`)}
+      activeOpacity={0.85}
     >
-      <View style={styles.cardHeader}>
-        <View style={styles.routeRow}>
-          <View style={styles.locationDot} />
-          <Text style={styles.routeText}>{item.origin}</Text>
+      {/* Kart başlığı: Plaka + Tarih */}
+      <View style={styles.cardTop}>
+        <View style={styles.plateBadge}>
+          <Ionicons name="car-outline" size={14} color={Colors.primary} />
+          <Text style={styles.plateText}>{item.vehiclePlate}</Text>
         </View>
-        <View style={[styles.routeConnector]} />
-        <View style={styles.routeRow}>
-          <View style={[styles.locationDot, styles.destDot]} />
-          <Text style={styles.routeText}>{item.destination}</Text>
-        </View>
-      </View>
-
-      <View style={styles.cardDivider} />
-
-      <View style={styles.cardMeta}>
-        <View style={styles.metaItem}>
-          <Ionicons name="car-outline" size={14} color={Colors.textLight} />
-          <Text style={styles.metaText}>{item.vehiclePlate}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Ionicons name="person-outline" size={14} color={Colors.textLight} />
-          <Text style={styles.metaText}>{item.driverName}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Ionicons name="calendar-outline" size={14} color={Colors.textLight} />
-          <Text style={styles.metaText}>{item.date}</Text>
+        <View style={styles.topRight}>
+          {item.region ? (
+            <View style={styles.regionBadge}>
+              <Ionicons name="location-outline" size={12} color={Colors.gray500} />
+              <Text style={styles.regionText}>{item.region}</Text>
+            </View>
+          ) : null}
+          <Text style={styles.dateText}>{item.date}</Text>
         </View>
       </View>
 
-      <View style={styles.cardFooter}>
-        <View style={styles.kmBadge}>
-          <Ionicons name="speedometer-outline" size={14} color={Colors.trip} />
-          <Text style={styles.kmText}>{item.distance.toLocaleString('tr-TR')} km</Text>
+      {/* KM Satırı */}
+      <View style={styles.kmRow}>
+        <View style={styles.kmBlock}>
+          <Text style={styles.kmLabel}>Çıkış KM</Text>
+          <Text style={styles.kmValue}>{item.departureKm.toLocaleString('tr-TR')}</Text>
         </View>
-        {item.revenue ? (
-          <Text style={styles.revenue}>₺{item.revenue.toLocaleString('tr-TR')}</Text>
+        <View style={styles.kmArrow}>
+          <Ionicons name="arrow-forward" size={18} color={Colors.gray300} />
+        </View>
+        <View style={styles.kmBlock}>
+          <Text style={styles.kmLabel}>Dönüş KM</Text>
+          <Text style={styles.kmValue}>{item.returnKm.toLocaleString('tr-TR')}</Text>
+        </View>
+        <View style={styles.kmTotal}>
+          <Text style={styles.kmTotalLabel}>Toplam</Text>
+          <Text style={styles.kmTotalValue}>{item.totalKm.toLocaleString('tr-TR')} km</Text>
+        </View>
+      </View>
+
+      {/* Alt satır: Saat aralığı + Yakıt + Sürücü */}
+      <View style={styles.cardBottom}>
+        {item.startTime && item.endTime ? (
+          <View style={styles.timeChip}>
+            <Ionicons name="time-outline" size={13} color={Colors.gray500} />
+            <Text style={styles.timeText}>{item.startTime} – {item.endTime}</Text>
+          </View>
+        ) : item.startTime ? (
+          <View style={styles.timeChip}>
+            <Ionicons name="time-outline" size={13} color={Colors.gray500} />
+            <Text style={styles.timeText}>{item.startTime}</Text>
+          </View>
         ) : null}
-        <View style={[
-          styles.statusBadge,
-          item.status === 'tamamlandı' ? styles.badgeSuccess :
-            item.status === 'devam ediyor' ? styles.badgeWarning : styles.badgeDanger
-        ]}>
-          <Text style={[
-            styles.statusText,
-            item.status === 'tamamlandı' ? styles.textSuccess :
-              item.status === 'devam ediyor' ? styles.textWarning : styles.textDanger
-          ]}>
-            {item.status}
-          </Text>
-        </View>
+
+        {item.fuelLiters ? (
+          <View style={styles.fuelChip}>
+            <Ionicons name="flame-outline" size={13} color={Colors.fuel} />
+            <Text style={styles.fuelText}>{item.fuelLiters.toFixed(1)} lt</Text>
+          </View>
+        ) : null}
+
+        {userProfile?.role === 'admin' && (
+          <View style={styles.driverChip}>
+            <Ionicons name="person-outline" size={13} color={Colors.gray400} />
+            <Text style={styles.driverText}>{item.driverName}</Text>
+          </View>
+        )}
+
+        {item.notes ? (
+          <View style={styles.noteChip}>
+            <Ionicons name="document-text-outline" size={13} color={Colors.gray400} />
+            <Text style={styles.noteText} numberOfLines={1}>{item.notes}</Text>
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      {/* Search */}
-      <View style={styles.searchRow}>
+      {/* Search + Add */}
+      <View style={styles.topBar}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={18} color={Colors.gray400} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rota, plaka veya sürücü ara..."
+            placeholder="Plaka, sürücü veya tarih ara..."
             value={search}
             onChangeText={setSearch}
             placeholderTextColor={Colors.gray300}
@@ -114,23 +132,8 @@ export default function TripsScreen() {
           ) : null}
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/trip/add')}>
-          <Ionicons name="add" size={22} color={Colors.white} />
+          <Ionicons name="add" size={24} color={Colors.white} />
         </TouchableOpacity>
-      </View>
-
-      {/* Filters */}
-      <View style={styles.filterRow}>
-        {STATUS_FILTERS.map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, statusFilter === f && styles.filterChipActive]}
-            onPress={() => setStatusFilter(f)}
-          >
-            <Text style={[styles.filterText, statusFilter === f && styles.filterTextActive]}>
-              {f}
-            </Text>
-          </TouchableOpacity>
-        ))}
       </View>
 
       {/* Count */}
@@ -155,11 +158,8 @@ export default function TripsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  searchRow: {
+  container: { flex: 1, backgroundColor: Colors.background },
+  topBar: {
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
@@ -191,46 +191,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.gray200,
-  },
-  filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.gray500,
-  },
-  filterTextActive: {
-    color: Colors.white,
-  },
   countText: {
     paddingHorizontal: 16,
     fontSize: 12,
     color: Colors.textLight,
     marginBottom: 8,
   },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  emptyContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
+  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  emptyContainer: { flex: 1, paddingHorizontal: 16 },
+
   card: {
     backgroundColor: Colors.white,
     borderRadius: 16,
@@ -242,94 +211,149 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  cardHeader: {
-    marginBottom: 12,
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
   },
-  routeRow: {
+  plateBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
-  locationDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.primary,
-  },
-  destDot: {
-    backgroundColor: Colors.danger,
-  },
-  routeConnector: {
-    width: 2,
-    height: 14,
-    backgroundColor: Colors.gray200,
-    marginLeft: 4,
-    marginVertical: 2,
-  },
-  routeText: {
+  plateText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 0.5,
   },
-  cardDivider: {
-    height: 1,
-    backgroundColor: Colors.gray100,
-    marginBottom: 12,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 12,
-    flexWrap: 'wrap',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  topRight: {
+    alignItems: 'flex-end',
     gap: 4,
   },
-  metaText: {
+  regionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  regionText: {
+    fontSize: 11,
+    color: Colors.gray500,
+    fontWeight: '500',
+  },
+  dateText: {
     fontSize: 12,
     color: Colors.textLight,
   },
-  cardFooter: {
+
+  kmRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: Colors.gray50,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
   },
-  kmBadge: {
+  kmBlock: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  kmLabel: {
+    fontSize: 10,
+    color: Colors.textLight,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  kmValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  kmArrow: {
+    paddingHorizontal: 8,
+  },
+  kmTotal: {
+    alignItems: 'center',
+    paddingLeft: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.gray200,
+    flex: 1,
+  },
+  kmTotalLabel: {
+    fontSize: 10,
+    color: Colors.trip,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  kmTotalValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.trip,
+  },
+
+  cardBottom: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+  },
+  timeChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.tripLight,
-    paddingHorizontal: 10,
+    backgroundColor: Colors.gray100,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
   },
-  kmText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.trip,
+  timeText: {
+    fontSize: 12,
+    color: Colors.gray600,
+    fontWeight: '500',
   },
-  revenue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.success,
-    marginLeft: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
+  fuelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.fuelLight,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
-    marginLeft: 'auto',
+    borderRadius: 6,
   },
-  badgeSuccess: { backgroundColor: Colors.successLight },
-  badgeWarning: { backgroundColor: Colors.warningLight },
-  badgeDanger: { backgroundColor: Colors.dangerLight },
-  statusText: {
-    fontSize: 11,
+  fuelText: {
+    fontSize: 12,
+    color: Colors.fuel,
     fontWeight: '700',
   },
-  textSuccess: { color: Colors.success },
-  textWarning: { color: Colors.warning },
-  textDanger: { color: Colors.danger },
+  driverChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.gray100,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  driverText: {
+    fontSize: 12,
+    color: Colors.gray600,
+  },
+  noteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  noteText: {
+    fontSize: 12,
+    color: Colors.gray400,
+    fontStyle: 'italic',
+    flex: 1,
+  },
 });

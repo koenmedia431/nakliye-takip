@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,33 +23,53 @@ export default function AddTripScreen() {
   const { userProfile } = useAuth();
   const { vehicles } = useData();
 
-  const [origin, setOrigin] = useState('');
-  const [destination, setDestination] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [startKm, setStartKm] = useState('');
-  const [endKm, setEndKm] = useState('');
-  const [loadType, setLoadType] = useState('');
-  const [loadWeight, setLoadWeight] = useState('');
-  const [revenue, setRevenue] = useState('');
-  const [notes, setNotes] = useState('');
-  const [status, setStatus] = useState<'tamamlandı' | 'devam ediyor'>('tamamlandı');
-  const [loading, setLoading] = useState(false);
+  // Araç seçimi – sürücü için atanmış araç, admin için picker
+  const assignedVehicle = useMemo(
+    () => vehicles.find(v => v.id === userProfile?.vehicleId) || null,
+    [vehicles, userProfile]
+  );
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(assignedVehicle);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
+
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [departureKm, setDepartureKm] = useState(
+    assignedVehicle ? String(assignedVehicle.currentKm) : ''
+  );
+  const [returnKm, setReturnKm] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const activeVehicles = vehicles.filter(v => v.active);
 
+  // Hesaplamalar
+  const depKmNum = parseInt(departureKm) || 0;
+  const retKmNum = parseInt(returnKm) || 0;
+  const totalKm = retKmNum > depKmNum ? retKmNum - depKmNum : 0;
+  const fuelRate = userProfile?.fuelRate || 0;
+  const fuelLiters = fuelRate > 0 && totalKm > 0 ? (fuelRate * totalKm) / 100 : 0;
+
+  const handleVehicleSelect = (v: Vehicle) => {
+    setSelectedVehicle(v);
+    setDepartureKm(String(v.currentKm));
+    setShowVehiclePicker(false);
+  };
+
   const handleSave = async () => {
-    if (!origin.trim() || !destination.trim() || !selectedVehicle || !startKm || !endKm) {
-      Alert.alert('Hata', 'Kalkış, varış, araç, başlangıç ve bitiş km zorunludur');
+    if (!selectedVehicle) {
+      Alert.alert('Hata', 'Lütfen bir araç seçin veya plaka ataması yapılmış olmalı');
       return;
     }
-    const sKm = parseInt(startKm);
-    const eKm = parseInt(endKm);
-    if (isNaN(sKm) || isNaN(eKm) || eKm <= sKm) {
-      Alert.alert('Hata', 'Bitiş km, başlangıç km\'den büyük olmalıdır');
+    if (!departureKm || !returnKm) {
+      Alert.alert('Hata', 'Çıkış ve dönüş km zorunludur');
       return;
     }
+    if (retKmNum <= depKmNum) {
+      Alert.alert('Hata', 'Dönüş km, çıkış km\'den büyük olmalıdır');
+      return;
+    }
+
     setLoading(true);
     try {
       await addTrip(userProfile!.companyId, {
@@ -57,17 +77,16 @@ export default function AddTripScreen() {
         vehiclePlate: selectedVehicle.plate,
         driverUid: userProfile!.uid,
         driverName: userProfile!.displayName,
-        origin: origin.trim(),
-        destination: destination.trim(),
+        region: userProfile?.region || undefined,
         date,
-        startKm: sKm,
-        endKm: eKm,
-        distance: eKm - sKm,
-        loadType: loadType.trim() || undefined,
-        loadWeight: loadWeight ? parseFloat(loadWeight) : undefined,
-        revenue: revenue ? parseFloat(revenue) : undefined,
+        startTime: startTime.trim() || undefined,
+        endTime: endTime.trim() || undefined,
+        departureKm: depKmNum,
+        returnKm: retKmNum,
+        totalKm,
+        fuelLiters: fuelLiters > 0 ? parseFloat(fuelLiters.toFixed(2)) : undefined,
+        fuelRate: fuelRate > 0 ? fuelRate : undefined,
         notes: notes.trim() || undefined,
-        status,
       });
       Alert.alert('Başarılı', 'Sefer kaydedildi', [{ text: 'Tamam', onPress: () => router.back() }]);
     } catch (e) {
@@ -78,7 +97,7 @@ export default function AddTripScreen() {
   };
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
@@ -86,37 +105,71 @@ export default function AddTripScreen() {
         <Text style={styles.headerTitle}>Sefer Ekle</Text>
         <View style={{ width: 40 }} />
       </View>
+
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+        {/* Araç / Plaka */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rota Bilgileri</Text>
+          <Text style={styles.sectionTitle}>Araç / Plaka</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Kalkış Yeri *</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="location-outline" size={18} color={Colors.gray400} style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Örn: İstanbul"
-                value={origin}
-                onChangeText={setOrigin}
-                placeholderTextColor={Colors.gray300}
-              />
+          {userProfile?.vehiclePlate && !showVehiclePicker ? (
+            // Sürücüye atanmış plaka
+            <View style={styles.assignedVehicleBox}>
+              <View style={styles.assignedVehicleLeft}>
+                <Ionicons name="car" size={20} color={Colors.primary} />
+                <View>
+                  <Text style={styles.assignedPlate}>{userProfile.vehiclePlate}</Text>
+                  {selectedVehicle && (
+                    <Text style={styles.assignedModel}>{selectedVehicle.brand} {selectedVehicle.model}</Text>
+                  )}
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowVehiclePicker(true)}>
+                <Text style={styles.changePlateText}>Değiştir</Text>
+              </TouchableOpacity>
             </View>
-          </View>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.pickerBtn}
+                onPress={() => setShowVehiclePicker(!showVehiclePicker)}
+              >
+                <Ionicons name="car-outline" size={18} color={Colors.gray400} />
+                <Text style={selectedVehicle ? styles.pickerSelected : styles.pickerPlaceholder}>
+                  {selectedVehicle
+                    ? `${selectedVehicle.plate} — ${selectedVehicle.brand} ${selectedVehicle.model}`
+                    : 'Araç seçin...'}
+                </Text>
+                <Ionicons name={showVehiclePicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.gray400} />
+              </TouchableOpacity>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Varış Yeri *</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="location" size={18} color={Colors.danger} style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Örn: Ankara"
-                value={destination}
-                onChangeText={setDestination}
-                placeholderTextColor={Colors.gray300}
-              />
-            </View>
-          </View>
+              {showVehiclePicker && (
+                <View style={styles.vehicleList}>
+                  {activeVehicles.length === 0 ? (
+                    <Text style={styles.noVehicle}>Aktif araç bulunamadı. Önce araç ekleyin.</Text>
+                  ) : (
+                    activeVehicles.map(v => (
+                      <TouchableOpacity
+                        key={v.id}
+                        style={[styles.vehicleItem, selectedVehicle?.id === v.id && styles.vehicleItemSelected]}
+                        onPress={() => handleVehicleSelect(v)}
+                      >
+                        <Text style={[styles.vehicleItemText, selectedVehicle?.id === v.id && styles.vehicleItemTextSelected]}>
+                          {v.plate} — {v.brand} {v.model}
+                        </Text>
+                        <Text style={styles.vehicleItemKm}>{v.currentKm.toLocaleString('tr-TR')} km</Text>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Tarih ve Saat */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Tarih ve Saat</Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tarih *</Text>
@@ -132,157 +185,116 @@ export default function AddTripScreen() {
               />
             </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Araç Seçimi *</Text>
-          <TouchableOpacity
-            style={styles.pickerBtn}
-            onPress={() => setShowVehiclePicker(!showVehiclePicker)}
-          >
-            <Ionicons name="car-outline" size={18} color={Colors.gray400} />
-            <Text style={selectedVehicle ? styles.pickerSelected : styles.pickerPlaceholder}>
-              {selectedVehicle ? `${selectedVehicle.plate} — ${selectedVehicle.brand} ${selectedVehicle.model}` : 'Araç seçin...'}
-            </Text>
-            <Ionicons name={showVehiclePicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.gray400} />
-          </TouchableOpacity>
-
-          {showVehiclePicker && (
-            <View style={styles.vehicleList}>
-              {activeVehicles.length === 0 ? (
-                <Text style={styles.noVehicle}>Aktif araç bulunamadı. Önce araç ekleyin.</Text>
-              ) : (
-                activeVehicles.map(v => (
-                  <TouchableOpacity
-                    key={v.id}
-                    style={[styles.vehicleItem, selectedVehicle?.id === v.id && styles.vehicleItemSelected]}
-                    onPress={() => { setSelectedVehicle(v); setStartKm(String(v.currentKm)); setShowVehiclePicker(false); }}
-                  >
-                    <Text style={[styles.vehicleItemText, selectedVehicle?.id === v.id && styles.vehicleItemTextSelected]}>
-                      {v.plate} — {v.brand} {v.model}
-                    </Text>
-                    <Text style={styles.vehicleItemKm}>{v.currentKm.toLocaleString('tr-TR')} km</Text>
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Kilometre</Text>
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Başlangıç KM *</Text>
+              <Text style={styles.label}>Başlangıç Saati</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="time-outline" size={18} color={Colors.gray400} style={styles.icon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="08:00"
+                  value={startTime}
+                  onChangeText={setStartTime}
+                  placeholderTextColor={Colors.gray300}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+            </View>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Bitiş Saati</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="time-outline" size={18} color={Colors.gray400} style={styles.icon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="17:00"
+                  value={endTime}
+                  onChangeText={setEndTime}
+                  placeholderTextColor={Colors.gray300}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Kilometre */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Kilometre</Text>
+
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Çıkış KM *</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
                   placeholder="0"
-                  value={startKm}
-                  onChangeText={setStartKm}
+                  value={departureKm}
+                  onChangeText={setDepartureKm}
                   keyboardType="numeric"
                   placeholderTextColor={Colors.gray300}
                 />
               </View>
             </View>
+            <View style={styles.arrowBox}>
+              <Ionicons name="arrow-forward" size={20} color={Colors.gray300} />
+            </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Bitiş KM *</Text>
+              <Text style={styles.label}>Dönüş KM *</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
                   placeholder="0"
-                  value={endKm}
-                  onChangeText={setEndKm}
+                  value={returnKm}
+                  onChangeText={setReturnKm}
                   keyboardType="numeric"
                   placeholderTextColor={Colors.gray300}
                 />
               </View>
             </View>
           </View>
-          {startKm && endKm && parseInt(endKm) > parseInt(startKm) && (
-            <View style={styles.distanceBadge}>
-              <Ionicons name="navigate" size={16} color={Colors.trip} />
-              <Text style={styles.distanceText}>
-                Mesafe: {(parseInt(endKm) - parseInt(startKm)).toLocaleString('tr-TR')} km
+
+          {totalKm > 0 && (
+            <View style={styles.resultRow}>
+              <View style={styles.resultBadge}>
+                <Ionicons name="speedometer-outline" size={15} color={Colors.trip} />
+                <Text style={styles.resultLabel}>Toplam KM</Text>
+                <Text style={styles.resultValue}>{totalKm.toLocaleString('tr-TR')} km</Text>
+              </View>
+              {fuelLiters > 0 && (
+                <View style={[styles.resultBadge, styles.fuelBadge]}>
+                  <Ionicons name="flame-outline" size={15} color={Colors.fuel} />
+                  <Text style={[styles.resultLabel, { color: Colors.fuel }]}>Yakıt Hakedişi</Text>
+                  <Text style={[styles.resultValue, { color: Colors.fuel }]}>{fuelLiters.toFixed(1)} lt</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {fuelRate > 0 && (
+            <View style={styles.fuelRateInfo}>
+              <Ionicons name="information-circle-outline" size={14} color={Colors.gray400} />
+              <Text style={styles.fuelRateText}>
+                Hakedis oranı: {fuelRate} lt/100km
               </Text>
             </View>
           )}
         </View>
 
+        {/* Notlar */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ek Bilgiler</Text>
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Yük Türü</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Örn: Tekstil"
-                  value={loadType}
-                  onChangeText={setLoadType}
-                  placeholderTextColor={Colors.gray300}
-                />
-              </View>
-            </View>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Ağırlık (ton)</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0"
-                  value={loadWeight}
-                  onChangeText={setLoadWeight}
-                  keyboardType="decimal-pad"
-                  placeholderTextColor={Colors.gray300}
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Gelir (₺)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="cash-outline" size={18} color={Colors.gray400} style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="0"
-                value={revenue}
-                onChangeText={setRevenue}
-                keyboardType="decimal-pad"
-                placeholderTextColor={Colors.gray300}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Durum</Text>
-            <View style={styles.statusRow}>
-              {(['tamamlandı', 'devam ediyor'] as const).map(s => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.statusBtn, status === s && styles.statusBtnActive]}
-                  onPress={() => setStatus(s)}
-                >
-                  <Text style={[styles.statusBtnText, status === s && styles.statusBtnTextActive]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Notlar</Text>
-            <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Sefer hakkında notlar..."
-                value={notes}
-                onChangeText={setNotes}
-                multiline
-                numberOfLines={3}
-                placeholderTextColor={Colors.gray300}
-                textAlignVertical="top"
-              />
-            </View>
+          <Text style={styles.sectionTitle}>Notlar</Text>
+          <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Sefer hakkında notlar..."
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              numberOfLines={3}
+              placeholderTextColor={Colors.gray300}
+              textAlignVertical="top"
+            />
           </View>
         </View>
 
@@ -294,16 +306,16 @@ export default function AddTripScreen() {
           {loading ? (
             <ActivityIndicator color={Colors.white} />
           ) : (
-            <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
               <Text style={styles.saveBtnText}>Sefer Kaydet</Text>
-            </>
+            </View>
           )}
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </>
+    </View>
   );
 }
 
@@ -333,7 +345,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 14 },
-  row: { flexDirection: 'row', gap: 12 },
+  row: { flexDirection: 'row', gap: 10, alignItems: 'flex-end' },
   inputGroup: { marginBottom: 12 },
   label: { fontSize: 13, fontWeight: '600', color: Colors.gray700, marginBottom: 6 },
   inputWrapper: {
@@ -349,6 +361,11 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: 12, fontSize: 14, color: Colors.text },
   textAreaWrapper: { alignItems: 'flex-start', paddingTop: 4 },
   textArea: { height: 80, paddingTop: 8 },
+  arrowBox: {
+    paddingBottom: 14,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
   pickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -384,34 +401,78 @@ const styles = StyleSheet.create({
   vehicleItemTextSelected: { color: Colors.primary, fontWeight: '700' },
   vehicleItemKm: { fontSize: 12, color: Colors.textLight },
   noVehicle: { padding: 14, fontSize: 14, color: Colors.textLight, textAlign: 'center' },
-  distanceBadge: {
+  assignedVehicleBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  assignedVehicleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  assignedPlate: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 1,
+  },
+  assignedModel: {
+    fontSize: 12,
+    color: Colors.gray500,
+    marginTop: 2,
+  },
+  changePlateText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  resultRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  resultBadge: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: Colors.tripLight,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    marginTop: 4,
-  },
-  distanceText: { fontSize: 14, fontWeight: '700', color: Colors.trip },
-  statusRow: { flexDirection: 'row', gap: 10 },
-  statusBtn: {
-    flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.gray200,
-    alignItems: 'center',
   },
-  statusBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  statusBtnText: { fontSize: 13, fontWeight: '600', color: Colors.gray500 },
-  statusBtnTextActive: { color: Colors.white },
-  saveBtn: {
+  fuelBadge: {
+    backgroundColor: Colors.fuelLight,
+  },
+  resultLabel: {
+    fontSize: 11,
+    color: Colors.trip,
+    fontWeight: '600',
+    flex: 1,
+  },
+  resultValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.trip,
+  },
+  fuelRateInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  fuelRateText: {
+    fontSize: 12,
+    color: Colors.gray400,
+  },
+  saveBtn: {
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     backgroundColor: Colors.primary,
     marginHorizontal: 16,
     marginTop: 24,

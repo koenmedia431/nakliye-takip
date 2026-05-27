@@ -55,6 +55,20 @@ export async function getCompanyUsers(companyId: string): Promise<User[]> {
   return snap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
 }
 
+export async function updateUserProfile(uid: string, data: Partial<User>): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), data);
+}
+
+export function subscribeCompanyUsers(
+  companyId: string,
+  callback: (users: User[]) => void
+): () => void {
+  const q = query(collection(db, 'users'), where('companyId', '==', companyId));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ uid: d.id, ...d.data() } as User)));
+  });
+}
+
 // ===================== VEHICLES =====================
 export async function addVehicle(
   companyId: string,
@@ -113,9 +127,11 @@ export async function addTrip(
     createdAt: Timestamp.now(),
   });
   // Araç km güncelle
-  await updateDoc(doc(db, 'companies', companyId, 'vehicles', data.vehicleId), {
-    currentKm: data.endKm,
-  });
+  if (data.vehicleId) {
+    await updateDoc(doc(db, 'companies', companyId, 'vehicles', data.vehicleId), {
+      currentKm: data.returnKm,
+    });
+  }
   return ref.id;
 }
 

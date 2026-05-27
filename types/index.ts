@@ -4,7 +4,11 @@ export interface User {
   displayName: string;
   role: 'admin' | 'driver';
   companyId: string;
-  vehicleIds?: string[];
+  // Sürücü bilgileri (admin tarafından atanır)
+  vehiclePlate?: string;      // Atanan plaka
+  vehicleId?: string;         // Atanan araç ID
+  fuelRate?: number;          // Yakıt hakedişi lt/100km
+  region?: string;            // Bölge
   createdAt: Date;
 }
 
@@ -37,17 +41,16 @@ export interface Trip {
   driverUid: string;
   driverName: string;
   companyId: string;
-  origin: string;
-  destination: string;
-  date: string; // ISO date string
-  startKm: number;
-  endKm: number;
-  distance: number;
-  loadType?: string;
-  loadWeight?: number;
+  region?: string;
+  date: string;           // YYYY-MM-DD
+  startTime?: string;     // HH:mm
+  endTime?: string;       // HH:mm
+  departureKm: number;    // Çıkış km
+  returnKm: number;       // Dönüş km
+  totalKm: number;        // Toplam km (returnKm - departureKm)
+  fuelLiters?: number;    // Yakıt (lt/100km * totalKm hesaplı)
+  fuelRate?: number;      // Hakedis oranı lt/100km
   notes?: string;
-  status: 'tamamlandı' | 'devam ediyor' | 'iptal';
-  revenue?: number;
   createdAt: Date;
 }
 
@@ -58,7 +61,7 @@ export interface FuelEntry {
   driverUid: string;
   driverName: string;
   companyId: string;
-  date: string; // ISO date string
+  date: string;
   liters: number;
   pricePerLiter: number;
   totalCost: number;
@@ -74,5 +77,5 @@ export interface MonthlyStats {
   totalFuelLiters: number;
   totalFuelCost: number;
   tripCount: number;
-  avgConsumption: number; // lt/100km
+  avgConsumption: number;
 }

@@ -22,7 +22,7 @@ export default function VehicleDetailScreen() {
   const vehicleTrips = useMemo(() => trips.filter((t: Trip) => t.vehicleId === id), [trips, id]);
   const vehicleFuel = useMemo(() => fuelEntries.filter((f: FuelEntry) => f.vehicleId === id), [fuelEntries, id]);
 
-  const totalKm = useMemo(() => vehicleTrips.reduce((s, t) => s + t.distance, 0), [vehicleTrips]);
+  const totalKm = useMemo(() => vehicleTrips.reduce((s, t) => s + (t.totalKm || 0), 0), [vehicleTrips]);
   const totalFuelCost = useMemo(() => vehicleFuel.reduce((s, f) => s + f.totalCost, 0), [vehicleFuel]);
   const totalLiters = useMemo(() => vehicleFuel.reduce((s, f) => s + f.liters, 0), [vehicleFuel]);
   const avgConsumption = useMemo(() => {
@@ -42,7 +42,7 @@ export default function VehicleDetailScreen() {
   }
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.headerBar, !vehicle.active && styles.headerBarInactive]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
@@ -98,10 +98,12 @@ export default function VehicleDetailScreen() {
           {vehicleTrips.slice(0, 5).map((t: Trip) => (
             <TouchableOpacity key={t.id} style={styles.tripRow} onPress={() => router.push(`/trip/${t.id}`)}>
               <View>
-                <Text style={styles.tripRoute}>{t.origin} → {t.destination}</Text>
-                <Text style={styles.tripMeta}>{t.date}</Text>
+                <Text style={styles.tripRoute}>
+                  {t.departureKm.toLocaleString('tr-TR')} → {t.returnKm.toLocaleString('tr-TR')} km
+                </Text>
+                <Text style={styles.tripMeta}>{t.date}{t.startTime ? ` • ${t.startTime}` : ''}</Text>
               </View>
-              <Text style={styles.tripKm}>{t.distance.toLocaleString('tr-TR')} km</Text>
+              <Text style={styles.tripKm}>{t.totalKm.toLocaleString('tr-TR')} km</Text>
             </TouchableOpacity>
           ))}
           {vehicleTrips.length === 0 && (
@@ -128,7 +130,7 @@ export default function VehicleDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </>
+    </View>
   );
 }
 

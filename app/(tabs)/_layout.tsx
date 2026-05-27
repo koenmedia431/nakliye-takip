@@ -42,7 +42,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: 'Ana Sayfa',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -76,11 +76,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="reports"
+        name="drivers"
         options={{
-          title: 'Raporlar',
+          title: 'Sürücüler',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart" size={size} color={color} />
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />

@@ -21,12 +21,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async () => {
+    setErrorMsg('');
     if (!email.trim() || !password) {
-      Alert.alert('Hata', 'Email ve şifre gerekli');
+      setErrorMsg('Email ve şifre gerekli');
       return;
     }
     setLoading(true);
@@ -34,11 +36,12 @@ export default function LoginScreen() {
       await login(email.trim().toLowerCase(), password);
       router.replace('/(tabs)');
     } catch (err: any) {
+      console.error('Giriş hatası:', err.code, err.message);
       const msg =
         err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential'
           ? 'Email veya şifre hatalı'
-          : 'Giriş yapılamadı. Lütfen tekrar deneyin.';
-      Alert.alert('Giriş Hatası', msg);
+          : `Giriş yapılamadı: ${err.message}`;
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -106,6 +109,13 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
@@ -216,6 +226,21 @@ const styles = StyleSheet.create({
   },
   eyeBtn: {
     padding: 4,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: Colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
   },
   loginBtn: {
     backgroundColor: Colors.primary,

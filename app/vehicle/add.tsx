@@ -65,7 +65,7 @@ export default function AddVehicleScreen() {
   };
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
@@ -200,7 +200,7 @@ export default function AddVehicleScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </>
+    </View>
   );
 }
 

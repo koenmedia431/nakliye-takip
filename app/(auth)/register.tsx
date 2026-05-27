@@ -24,20 +24,23 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const { register } = useAuth();
   const router = useRouter();
 
   const handleRegister = async () => {
+    setErrorMsg('');
+    console.log('Kayıt deneniyor...', { displayName, companyName, email });
     if (!displayName.trim() || !companyName.trim() || !email.trim() || !password) {
-      Alert.alert('Hata', 'Tüm alanları doldurun');
+      setErrorMsg('Tüm alanları doldurun');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Hata', 'Şifreler eşleşmiyor');
+      setErrorMsg('Şifreler eşleşmiyor');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalı');
+      setErrorMsg('Şifre en az 6 karakter olmalı');
       return;
     }
     setLoading(true);
@@ -45,11 +48,14 @@ export default function RegisterScreen() {
       await register(email.trim().toLowerCase(), password, displayName.trim(), companyName.trim());
       router.replace('/(tabs)');
     } catch (err: any) {
+      console.error('Kayıt hatası:', err.code, err.message);
       const msg =
         err.code === 'auth/email-already-in-use'
           ? 'Bu email adresi zaten kullanımda'
-          : 'Kayıt olunamadı. Lütfen tekrar deneyin.';
-      Alert.alert('Kayıt Hatası', msg);
+          : err.code === 'auth/invalid-email'
+          ? 'Geçersiz email adresi'
+          : `Kayıt olunamadı: ${err.message}`;
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -168,6 +174,13 @@ export default function RegisterScreen() {
             </View>
           </View>
 
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
+
           <TouchableOpacity
             style={[styles.registerBtn, loading && styles.btnDisabled]}
             onPress={handleRegister}
@@ -284,6 +297,21 @@ const styles = StyleSheet.create({
   },
   eyeBtn: {
     padding: 4,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: Colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
   },
   registerBtn: {
     backgroundColor: Colors.primary,

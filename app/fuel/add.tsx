@@ -78,7 +78,7 @@ export default function AddFuelScreen() {
   };
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
@@ -165,7 +165,7 @@ export default function AddFuelScreen() {
             </View>
           </View>
 
-          {totalCost && (
+          {Boolean(totalCost) && (
             <View style={styles.totalCostBadge}>
               <Ionicons name="cash" size={16} color={Colors.success} />
               <Text style={styles.totalCostText}>Toplam: ₺{totalCost}</Text>
@@ -235,7 +235,7 @@ export default function AddFuelScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </>
+    </View>
   );
 }
 

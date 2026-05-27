@@ -67,7 +67,8 @@ export default function TripDetailScreen() {
   );
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+      {/* Header */}
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
@@ -79,75 +80,78 @@ export default function TripDetailScreen() {
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Route Card */}
-        <View style={styles.routeCard}>
-          <View style={styles.routePoint}>
-            <View style={[styles.dot, styles.dotOrigin]} />
-            <View>
-              <Text style={styles.routeLabel}>Kalkış</Text>
-              <Text style={styles.routeCity}>{trip.origin}</Text>
+
+        {/* Plaka + Tarih Hero */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <View style={styles.plateBadge}>
+              <Ionicons name="car" size={16} color={Colors.primary} />
+              <Text style={styles.plateText}>{trip.vehiclePlate}</Text>
+            </View>
+            <Text style={styles.dateText}>{trip.date}</Text>
+          </View>
+
+          {/* KM gösterge */}
+          <View style={styles.kmDisplay}>
+            <View style={styles.kmCol}>
+              <Text style={styles.kmColLabel}>Çıkış KM</Text>
+              <Text style={styles.kmColValue}>{trip.departureKm.toLocaleString('tr-TR')}</Text>
+            </View>
+            <View style={styles.kmSeparator}>
+              <Ionicons name="arrow-forward" size={24} color={Colors.gray300} />
+            </View>
+            <View style={styles.kmCol}>
+              <Text style={styles.kmColLabel}>Dönüş KM</Text>
+              <Text style={styles.kmColValue}>{trip.returnKm.toLocaleString('tr-TR')}</Text>
             </View>
           </View>
-          <View style={styles.routeLine} />
-          <View style={styles.routePoint}>
-            <View style={[styles.dot, styles.dotDest]} />
-            <View>
-              <Text style={styles.routeLabel}>Varış</Text>
-              <Text style={styles.routeCity}>{trip.destination}</Text>
+
+          <View style={styles.totalRow}>
+            <View style={styles.totalBadge}>
+              <Ionicons name="speedometer" size={18} color={Colors.trip} />
+              <Text style={styles.totalKmLabel}>Toplam KM</Text>
+              <Text style={styles.totalKmValue}>{trip.totalKm.toLocaleString('tr-TR')} km</Text>
             </View>
-          </View>
-          <View style={styles.distanceRow}>
-            <View style={styles.distanceBadge}>
-              <Ionicons name="navigate" size={18} color={Colors.trip} />
-              <Text style={styles.distanceText}>{trip.distance.toLocaleString('tr-TR')} km</Text>
-            </View>
-            <View style={[
-              styles.statusBadge,
-              trip.status === 'tamamlandı' ? styles.badgeSuccess :
-                trip.status === 'devam ediyor' ? styles.badgeWarning : styles.badgeDanger
-            ]}>
-              <Text style={[
-                styles.statusText,
-                trip.status === 'tamamlandı' ? styles.textSuccess :
-                  trip.status === 'devam ediyor' ? styles.textWarning : styles.textDanger
-              ]}>
-                {trip.status}
-              </Text>
-            </View>
+            {trip.fuelLiters ? (
+              <View style={[styles.totalBadge, styles.fuelBadge]}>
+                <Ionicons name="flame" size={18} color={Colors.fuel} />
+                <Text style={[styles.totalKmLabel, { color: Colors.fuel }]}>Yakıt Hakedişi</Text>
+                <Text style={[styles.totalKmValue, { color: Colors.fuel }]}>{trip.fuelLiters.toFixed(1)} lt</Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
-        {/* Details */}
+        {/* Sefer Bilgileri */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Sefer Bilgileri</Text>
           <InfoRow icon="calendar-outline" label="Tarih" value={trip.date} />
           <InfoRow icon="car-outline" label="Plaka" value={trip.vehiclePlate} />
           <InfoRow icon="person-outline" label="Sürücü" value={trip.driverName} />
-          <InfoRow icon="speedometer-outline" label="Başlangıç KM" value={`${trip.startKm.toLocaleString('tr-TR')} km`} />
-          <InfoRow icon="speedometer" label="Bitiş KM" value={`${trip.endKm.toLocaleString('tr-TR')} km`} />
+          {trip.region ? (
+            <InfoRow icon="location-outline" label="Bölge" value={trip.region} />
+          ) : null}
+          {trip.startTime ? (
+            <InfoRow icon="time-outline" label="Başlangıç Saati" value={trip.startTime} />
+          ) : null}
+          {trip.endTime ? (
+            <InfoRow icon="time-outline" label="Bitiş Saati" value={trip.endTime} />
+          ) : null}
+          {trip.fuelRate ? (
+            <InfoRow icon="flame-outline" label="Hakedis Oranı" value={`${trip.fuelRate} lt/100km`} />
+          ) : null}
         </View>
 
-        {(trip.loadType || trip.loadWeight || trip.revenue) && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Yük & Gelir</Text>
-            {trip.loadType && <InfoRow icon="cube-outline" label="Yük Türü" value={trip.loadType} />}
-            {trip.loadWeight && <InfoRow icon="scale-outline" label="Ağırlık" value={`${trip.loadWeight} ton`} />}
-            {trip.revenue && (
-              <InfoRow icon="cash-outline" label="Gelir" value={`₺${trip.revenue.toLocaleString('tr-TR')}`} />
-            )}
-          </View>
-        )}
-
-        {trip.notes && (
+        {trip.notes ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Notlar</Text>
             <Text style={styles.notes}>{trip.notes}</Text>
           </View>
-        )}
+        ) : null}
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </>
+    </View>
   );
 }
 
@@ -165,61 +169,100 @@ const styles = StyleSheet.create({
   deleteBtn: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.white },
   container: { flex: 1, backgroundColor: Colors.background },
-  routeCard: {
+
+  heroCard: {
     backgroundColor: Colors.white,
     margin: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 4,
   },
-  routePoint: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  heroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  dotOrigin: { backgroundColor: Colors.primary },
-  dotDest: { backgroundColor: Colors.danger },
-  routeLabel: { fontSize: 11, color: Colors.textLight, fontWeight: '500' },
-  routeCity: { fontSize: 20, fontWeight: '700', color: Colors.text },
-  routeLine: {
-    width: 2,
-    height: 24,
-    backgroundColor: Colors.gray200,
-    marginLeft: 5,
-    marginVertical: 6,
-  },
-  distanceRow: {
+  plateBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.gray100,
+    gap: 8,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
-  distanceBadge: {
+  plateText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 1,
+  },
+  dateText: {
+    fontSize: 14,
+    color: Colors.textLight,
+    fontWeight: '500',
+  },
+  kmDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.gray50,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
+  kmCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  kmColLabel: {
+    fontSize: 11,
+    color: Colors.textLight,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  kmColValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  kmSeparator: {
+    paddingHorizontal: 8,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  totalBadge: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: Colors.tripLight,
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
-  distanceText: { fontSize: 16, fontWeight: '800', color: Colors.trip },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, marginLeft: 'auto' },
-  badgeSuccess: { backgroundColor: Colors.successLight },
-  badgeWarning: { backgroundColor: Colors.warningLight },
-  badgeDanger: { backgroundColor: Colors.dangerLight },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  textSuccess: { color: Colors.success },
-  textWarning: { color: Colors.warning },
-  textDanger: { color: Colors.danger },
+  fuelBadge: {
+    backgroundColor: Colors.fuelLight,
+  },
+  totalKmLabel: {
+    fontSize: 11,
+    color: Colors.trip,
+    fontWeight: '600',
+    flex: 1,
+  },
+  totalKmValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.trip,
+  },
+
   card: {
     backgroundColor: Colors.white,
     marginHorizontal: 16,

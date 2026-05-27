@@ -36,13 +36,14 @@ export default function ReportsScreen() {
       const monthTrips = trips.filter((t: Trip) => t.date && t.date.startsWith(key));
       const monthFuel = fuelEntries.filter((f: FuelEntry) => f.date && f.date.startsWith(key));
 
-      const km = monthTrips.reduce((s, t) => s + t.distance, 0);
+      const km = monthTrips.reduce((s, t) => s + (t.totalKm || 0), 0);
       const liters = monthFuel.reduce((s, f) => s + f.liters, 0);
       const cost = monthFuel.reduce((s, f) => s + f.totalCost, 0);
       const consumption = km > 0 && liters > 0 ? (liters / km) * 100 : 0;
-      const revenue = monthTrips.reduce((s, t) => s + (t.revenue || 0), 0);
+      // Yakıt hakedişi (seferlerden hesaplanmış)
+      const fuelHakedis = monthTrips.reduce((s, t) => s + (t.fuelLiters || 0), 0);
 
-      result.push({ key, label, km, liters, cost, consumption, tripCount: monthTrips.length, revenue });
+      result.push({ key, label, km, liters, cost, consumption, tripCount: monthTrips.length, fuelHakedis });
     }
     return result;
   }, [trips, fuelEntries, periodMonths]);
@@ -52,7 +53,7 @@ export default function ReportsScreen() {
     cost: monthlyData.reduce((s, m) => s + m.cost, 0),
     liters: monthlyData.reduce((s, m) => s + m.liters, 0),
     trips: monthlyData.reduce((s, m) => s + m.tripCount, 0),
-    revenue: monthlyData.reduce((s, m) => s + m.revenue, 0),
+    fuelHakedis: monthlyData.reduce((s, m) => s + m.fuelHakedis, 0),
     avgConsumption: (() => {
       const totalKm = monthlyData.reduce((s, m) => s + m.km, 0);
       const totalL = monthlyData.reduce((s, m) => s + m.liters, 0);
@@ -98,11 +99,11 @@ export default function ReportsScreen() {
           <Text style={styles.summaryLabel}>Yakıt Gideri</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Ionicons name="cash" size={22} color={Colors.success} />
+          <Ionicons name="flame-outline" size={22} color={Colors.success} />
           <Text style={[styles.summaryValue, { color: Colors.success }]}>
-            ₺{totals.revenue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+            {totals.fuelHakedis.toFixed(1)} lt
           </Text>
-          <Text style={styles.summaryLabel}>Toplam Gelir</Text>
+          <Text style={styles.summaryLabel}>Yakıt Hakedişi</Text>
         </View>
         <View style={styles.summaryCard}>
           <Ionicons name="speedometer" size={22} color={Colors.warning} />
@@ -203,7 +204,7 @@ export default function ReportsScreen() {
           {vehicles.map(v => {
             const vTrips = trips.filter((t: Trip) => t.vehicleId === v.id);
             const vFuel = fuelEntries.filter((f: FuelEntry) => f.vehicleId === v.id);
-            const vKm = vTrips.reduce((s, t) => s + t.distance, 0);
+            const vKm = vTrips.reduce((s, t) => s + (t.totalKm || 0), 0);
             const vCost = vFuel.reduce((s, f) => s + f.totalCost, 0);
             const vLiters = vFuel.reduce((s, f) => s + f.liters, 0);
             const vConsumption = vKm > 0 && vLiters > 0 ? (vLiters / vKm) * 100 : 0;
