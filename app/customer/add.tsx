@@ -14,7 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../hooks/useData';
-import { addCustomer, updateCustomer } from '../../lib/firestore';
+import { addCustomer, updateCustomer } from '../../lib/db';
 import { Colors } from '../../constants/colors';
 
 // ?id=... verilirse düzenleme modunda açılır

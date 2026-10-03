@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../hooks/useData';
-import { addFuelEntry } from '../../lib/firestore';
+import { addFuelEntry } from '../../lib/db';
 import { Colors } from '../../constants/colors';
 import { Vehicle } from '../../types';
 

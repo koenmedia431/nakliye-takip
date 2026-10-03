@@ -9,6 +9,7 @@ export interface User {
   vehicleId?: string;         // Atanan araç ID
   fuelRate?: number;          // Yakıt hakedişi lt/100km
   region?: string;            // Bölge
+  firebaseUid?: string | null; // Firebase'den taşınan hesaplarda eski uid
   createdAt: Date;
 }
 
@@ -16,6 +17,7 @@ export interface Company {
   id: string;
   name: string;
   adminUid: string;
+  firebaseImportedAt?: string | null; // Firebase verileri aktarıldıysa zamanı
   createdAt: Date;
 }
 

@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../../hooks/useData';
 import { useAuth } from '../../hooks/useAuth';
-import { updateVehicle, deleteVehicle } from '../../lib/firestore';
+import { updateVehicle, deleteVehicle } from '../../lib/db';
 import EmptyState from '../../components/EmptyState';
 import { Colors } from '../../constants/colors';
 import { Vehicle } from '../../types';

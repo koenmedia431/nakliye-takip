@@ -49,6 +49,10 @@ export default function RegisterScreen() {
       router.replace('/(tabs)');
     } catch (err: any) {
       console.error('Kayıt hatası:', err.code, err.message);
+      if (err.code === 'auth/email-not-confirmed') {
+        Alert.alert('Kayıt alındı', err.message, [{ text: 'Tamam', onPress: () => router.replace('/(auth)/login') }]);
+        return;
+      }
       const msg =
         err.code === 'auth/email-already-in-use'
           ? 'Bu email adresi zaten kullanımda'

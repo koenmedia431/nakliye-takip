@@ -12,7 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../../hooks/useData';
 import { useAuth } from '../../hooks/useAuth';
-import { deleteTrip } from '../../lib/firestore';
+import { deleteTrip } from '../../lib/db';
 import { Colors } from '../../constants/colors';
 
 export default function TripDetailScreen() {

@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../hooks/useData';
-import { subscribeCompanyUsers, updateUserProfile } from '../../lib/firestore';
+import { subscribeCompanyUsers, updateUserProfile } from '../../lib/db';
 import { Colors } from '../../constants/colors';
 import { User, Vehicle } from '../../types';
 

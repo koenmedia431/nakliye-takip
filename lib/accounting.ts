@@ -82,8 +82,8 @@ export function sortTx(txs: CustomerTransaction[]): CustomerTransaction[] {
 }
 
 function createdMs(tx: CustomerTransaction): number {
-  const c = tx.createdAt as unknown as { toMillis?: () => number } | undefined;
-  return c?.toMillis ? c.toMillis() : Date.now();
+  const c = tx.createdAt as unknown;
+  return c instanceof Date ? c.getTime() : Date.now();
 }
 
 export interface StatementRow {

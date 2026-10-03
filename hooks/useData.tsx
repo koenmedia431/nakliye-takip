@@ -6,7 +6,7 @@ import {
   subscribeFuelEntries,
   subscribeCustomers,
   subscribeAllCustomerTx,
-} from '../lib/firestore';
+} from '../lib/db';
 import { useAuth } from './useAuth';
 
 interface DataContextType {

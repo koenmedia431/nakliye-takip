@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../hooks/useData';
-import { getCompany, deleteCustomer } from '../../lib/firestore';
+import { getCompany, deleteCustomer } from '../../lib/db';
 import { calcTotals, formatMoney, balanceLabel } from '../../lib/accounting';
 import { Colors } from '../../constants/colors';
 import { CustomerTransaction, CustomerTxKind } from '../../types';
