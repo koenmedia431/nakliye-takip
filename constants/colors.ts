@@ -31,4 +31,6 @@ export const Colors = {
   tripLight: '#F5F3FF',
   vehicle: '#06B6D4',
   vehicleLight: '#ECFEFF',
+  customer: '#0D9488',
+  customerLight: '#F0FDFA',
 };

@@ -2,8 +2,12 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Platform } from 'react-native';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function TabsLayout() {
+  const { userProfile } = useAuth();
+  const isAdmin = userProfile?.role === 'admin';
+
   return (
     <Tabs
       screenOptions={{
@@ -63,6 +67,17 @@ export default function TabsLayout() {
           title: 'Yakıt',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="flame" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="customers"
+        options={{
+          title: 'Müşteriler',
+          // Cari hesaplar sadece yöneticiye görünür
+          href: isAdmin ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet" size={size} color={color} />
           ),
         }}
       />

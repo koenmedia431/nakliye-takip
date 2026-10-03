@@ -41,6 +41,19 @@ service cloud.firestore {
           isAdmin(companyId) || resource.data.driverUid == request.auth.uid
         );
       }
+
+      // Müşteri cari hesapları: sadece yönetici
+      match /customers/{customerId} {
+        allow read, write: if request.auth != null && getUserCompanyId() == companyId && isAdmin(companyId);
+      }
+
+      match /customerTx/{txId} {
+        allow read, write: if request.auth != null && getUserCompanyId() == companyId && isAdmin(companyId);
+      }
+
+      match /customerMessages/{messageId} {
+        allow read, write: if request.auth != null && getUserCompanyId() == companyId && isAdmin(companyId);
+      }
     }
 
     // Yardımcı fonksiyonlar
