@@ -6,7 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import LoadingScreen from '../components/LoadingScreen';
 
 function RootLayoutNav() {
-  const { firebaseUser, loading } = useAuth();
+  const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -14,12 +14,12 @@ function RootLayoutNav() {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (!firebaseUser && !inAuthGroup) {
+    if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
-    } else if (firebaseUser && inAuthGroup) {
+    } else if (session && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [firebaseUser, loading, segments]);
+  }, [session, loading, segments]);
 
   if (loading) return <LoadingScreen />;
   return <Slot />;

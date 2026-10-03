@@ -18,7 +18,7 @@ import {
   addCustomerMessage,
   deleteCustomerMessage,
   toMillis,
-} from '../../lib/firestore';
+} from '../../lib/db';
 import { parseChatMessage, formatMoney, formatDate, KIND_LABELS } from '../../lib/accounting';
 import { KIND_STYLE } from './kindStyle';
 

@@ -130,4 +130,36 @@ NakliyeTakip/
 - **Ekstre:** Müşteriye gönderilecek hesap dökümü (sadece iş ve tahsilatlar, yürüyen bakiye). "Ekstre Gönder" ile WhatsApp, e-posta vb. üzerinden paylaşılır.
 - **Masraflar:** Sadece size özel sayfa. Bu müşteri için yapılan giderler ve kâr hesabı; ekstreye girmez.
 
-Yeni koleksiyonlar: `companies/{id}/customers`, `customerTx`, `customerMessages`. Güncel `firestore.rules` dosyasını Firebase Console'da yeniden yayınlamayı unutmayın.
+Veriler Supabase'de `customers`, `customer_tx`, `customer_messages` tablolarında tutulur.
+
+## 6. Supabase'e Geçiş (Firebase'den)
+
+Uygulama artık veritabanı ve giriş için **Supabase** kullanıyor (proje: `qkyifdfcvfbngdguhqci`).
+Firebase sadece eski hesapları taşımak için duruyor.
+
+- **Şema:** `supabase/migrations/` — tablolar, RLS kuralları (şirketler birbirinin verisini göremez,
+  müşteri cari sadece yöneticiye açık, kullanıcı kendi rolünü/şirketini değiştiremez).
+- **Edge Function'lar:** `supabase/functions/`
+  - `migrate-user`: Firebase ID token'ını doğrular, aynı e-posta ve şifreyle Supabase hesabını açar,
+    profili Firestore'dan taşır.
+  - `import-company`: Yöneticinin şirketine ait kullanıcı, araç, sefer, yakıt ve müşteri verilerini
+    Firestore'dan Supabase'e kopyalar (belge kimlikleri korunur, tekrar çalıştırmak güvenlidir).
+  - Firebase Admin anahtarı gerekmez; Firestore, kullanıcının kendi token'ıyla okunur.
+
+### Geçiş nasıl işler?
+1. Kullanıcı yeni sürümde her zamanki e-posta ve şifresiyle giriş yapar.
+2. Supabase'de hesabı yoksa uygulama şifreyi Firebase'le doğrular ve hesabı otomatik taşır.
+3. **Yönetici** ilk girişinde şirketin tüm verileri otomatik aktarılır. Aktarım yarıda kalırsa
+   bir sonraki girişte tekrar denenir.
+4. Kimse şifre yenilemek zorunda kalmaz.
+
+> Yöneticinin, yeni sürüme sürücülerden **önce** girmesi önerilir; böylece seferler ve araçlar hazır olur.
+> Aktarım tamamlanana kadar eski sürümle Firebase'e yazılan kayıtlar, yöneticinin girişinde aktarılır;
+> aktarımdan **sonra** eski sürümle girilen kayıtlar taşınmaz. Herkesin güncellemeyi alması önemlidir.
+
+`firestore.rules` geçiş süresince yerinde kalmalı (aktarım bu kurallarla okuma yapar).
+Tüm kullanıcılar taşındıktan sonra Firebase kapatılabilir.
+
+### Yeni kayıtlar
+Supabase varsayılan olarak yeni kayıtlarda e-posta doğrulaması ister. Doğrulamasız kayıt için:
+Supabase Dashboard → Authentication → Sign In / Providers → Email → "Confirm email" kapatılabilir.

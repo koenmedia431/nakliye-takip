@@ -1,6 +1,7 @@
+// Firebase artık sadece geçiş için kullanılıyor: Supabase'de henüz hesabı
+// olmayan kullanıcının şifresi Firebase Auth ile doğrulanır (bkz. hooks/useAuth.tsx).
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAwdbWSuhpSlAQsJmJoo1Iodm592aIrB2s",
@@ -15,5 +16,4 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 export default app;

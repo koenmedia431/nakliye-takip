@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
-import { addVehicle } from '../../lib/firestore';
+import { addVehicle } from '../../lib/db';
 import { Colors } from '../../constants/colors';
 import { Vehicle } from '../../types';
 

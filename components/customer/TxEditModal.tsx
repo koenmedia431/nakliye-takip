@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { CustomerTransaction, CustomerTxKind } from '../../types';
-import { addCustomerTx, updateCustomerTx, deleteCustomerTx } from '../../lib/firestore';
+import { addCustomerTx, updateCustomerTx, deleteCustomerTx } from '../../lib/db';
 import {
   KIND_LABELS,
   formatDate,
