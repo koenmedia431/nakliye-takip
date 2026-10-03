@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Vehicle, Trip, FuelEntry } from '../types';
+import { Vehicle, Trip, FuelEntry, Customer, CustomerTransaction } from '../types';
 import {
   subscribeVehicles,
   subscribeTrips,
   subscribeFuelEntries,
+  subscribeCustomers,
+  subscribeAllCustomerTx,
 } from '../lib/firestore';
 import { useAuth } from './useAuth';
 
@@ -11,6 +13,8 @@ interface DataContextType {
   vehicles: Vehicle[];
   trips: Trip[];
   fuelEntries: FuelEntry[];
+  customers: Customer[];
+  customerTx: CustomerTransaction[];
   loadingData: boolean;
 }
 
@@ -21,6 +25,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerTx, setCustomerTx] = useState<CustomerTransaction[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -48,17 +54,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    // Müşteri cari hesapları sadece yöneticiye açık
+    let unsubC = () => {};
+    let unsubCT = () => {};
+    if (userProfile.role === 'admin') {
+      unsubC = subscribeCustomers(companyId, setCustomers);
+      unsubCT = subscribeAllCustomerTx(companyId, setCustomerTx);
+    } else {
+      setCustomers([]);
+      setCustomerTx([]);
+    }
+
     setLoadingData(false);
 
     return () => {
       unsubV();
       unsubT();
       unsubF();
+      unsubC();
+      unsubCT();
     };
   }, [userProfile]);
 
   return (
-    <DataContext.Provider value={{ vehicles, trips, fuelEntries, loadingData }}>
+    <DataContext.Provider value={{ vehicles, trips, fuelEntries, customers, customerTx, loadingData }}>
       {children}
     </DataContext.Provider>
   );

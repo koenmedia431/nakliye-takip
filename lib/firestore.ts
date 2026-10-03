@@ -12,9 +12,19 @@ import {
   onSnapshot,
   Timestamp,
   setDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Company, Vehicle, Trip, FuelEntry, User } from '../types';
+import {
+  Company,
+  Vehicle,
+  Trip,
+  FuelEntry,
+  User,
+  Customer,
+  CustomerTransaction,
+  CustomerMessage,
+} from '../types';
 
 // ===================== COMPANY =====================
 export async function createCompany(adminUid: string, companyName: string): Promise<string> {
@@ -224,4 +234,151 @@ export async function getFuelEntries(companyId: string, vehicleId?: string): Pro
     : query(collection(db, 'companies', companyId, 'fuel'), orderBy('date', 'desc'));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as FuelEntry));
+}
+
+// ===================== CUSTOMERS =====================
+export async function addCustomer(
+  companyId: string,
+  data: Omit<Customer, 'id' | 'companyId' | 'createdAt'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'companies', companyId, 'customers'), {
+    ...data,
+    companyId,
+    createdAt: Timestamp.now(),
+  });
+  return ref.id;
+}
+
+export async function updateCustomer(
+  companyId: string,
+  customerId: string,
+  data: Partial<Customer>
+): Promise<void> {
+  await updateDoc(doc(db, 'companies', companyId, 'customers', customerId), data);
+}
+
+// Müşteriyi tüm hareketleri ve sohbet mesajlarıyla birlikte siler
+export async function deleteCustomer(companyId: string, customerId: string): Promise<void> {
+  const [txSnap, msgSnap] = await Promise.all([
+    getDocs(query(collection(db, 'companies', companyId, 'customerTx'), where('customerId', '==', customerId))),
+    getDocs(query(collection(db, 'companies', companyId, 'customerMessages'), where('customerId', '==', customerId))),
+  ]);
+  const refs = [...txSnap.docs, ...msgSnap.docs].map(d => d.ref);
+  // Firestore batch limiti 500 işlem
+  for (let i = 0; i < refs.length; i += 450) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + 450).forEach(r => batch.delete(r));
+    await batch.commit();
+  }
+  await deleteDoc(doc(db, 'companies', companyId, 'customers', customerId));
+}
+
+export function subscribeCustomers(
+  companyId: string,
+  callback: (customers: Customer[]) => void
+): () => void {
+  const q = query(collection(db, 'companies', companyId, 'customers'), orderBy('name'));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as Customer)));
+  });
+}
+
+// ===================== CUSTOMER TRANSACTIONS =====================
+// Tüm müşterilerin hareketleri (liste ekranındaki bakiyeler için)
+export function subscribeAllCustomerTx(
+  companyId: string,
+  callback: (txs: CustomerTransaction[]) => void
+): () => void {
+  return onSnapshot(collection(db, 'companies', companyId, 'customerTx'), snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as CustomerTransaction)));
+  });
+}
+
+export async function addCustomerTx(
+  companyId: string,
+  data: Omit<CustomerTransaction, 'id' | 'companyId' | 'createdAt'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'companies', companyId, 'customerTx'), {
+    ...data,
+    companyId,
+    createdAt: Timestamp.now(),
+  });
+  return ref.id;
+}
+
+export async function updateCustomerTx(
+  companyId: string,
+  txId: string,
+  data: Partial<CustomerTransaction>
+): Promise<void> {
+  await updateDoc(doc(db, 'companies', companyId, 'customerTx', txId), data);
+}
+
+export async function deleteCustomerTx(companyId: string, txId: string): Promise<void> {
+  await deleteDoc(doc(db, 'companies', companyId, 'customerTx', txId));
+}
+
+// ===================== CUSTOMER CHAT =====================
+export function subscribeCustomerMessages(
+  companyId: string,
+  customerId: string,
+  callback: (messages: CustomerMessage[]) => void
+): () => void {
+  // orderBy kullanılmıyor: composite index gerektirmesin diye istemcide sıralanıyor
+  const q = query(
+    collection(db, 'companies', companyId, 'customerMessages'),
+    where('customerId', '==', customerId)
+  );
+  return onSnapshot(q, snap => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as CustomerMessage));
+    list.sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
+    callback(list);
+  });
+}
+
+// Sohbet mesajını ve mesajdan çıkan kayıtları tek seferde yazar
+export async function addCustomerMessage(
+  companyId: string,
+  customerId: string,
+  text: string,
+  entries: Omit<CustomerTransaction, 'id' | 'companyId' | 'customerId' | 'createdAt' | 'messageId'>[]
+): Promise<string> {
+  const batch = writeBatch(db);
+  const now = Timestamp.now();
+  const msgRef = doc(collection(db, 'companies', companyId, 'customerMessages'));
+  const txIds: string[] = [];
+  entries.forEach(e => {
+    const txRef = doc(collection(db, 'companies', companyId, 'customerTx'));
+    txIds.push(txRef.id);
+    batch.set(txRef, {
+      ...e,
+      companyId,
+      customerId,
+      messageId: msgRef.id,
+      createdAt: now,
+    });
+  });
+  batch.set(msgRef, { companyId, customerId, text, txIds, createdAt: now });
+  await batch.commit();
+  return msgRef.id;
+}
+
+export async function deleteCustomerMessage(
+  companyId: string,
+  message: CustomerMessage,
+  withTransactions: boolean
+): Promise<void> {
+  const batch = writeBatch(db);
+  if (withTransactions) {
+    message.txIds.forEach(id => batch.delete(doc(db, 'companies', companyId, 'customerTx', id)));
+  }
+  batch.delete(doc(db, 'companies', companyId, 'customerMessages', message.id));
+  await batch.commit();
+}
+
+export function toMillis(value: unknown): number {
+  if (!value) return Date.now(); // bekleyen yazımlar
+  if (value instanceof Timestamp) return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  return 0;
 }

@@ -79,3 +79,42 @@ export interface MonthlyStats {
   tripCount: number;
   avgConsumption: number;
 }
+
+// ===================== MÜŞTERİ CARİ =====================
+export interface Customer {
+  id: string;
+  companyId: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  taxNo?: string;         // Vergi no / TC
+  address?: string;
+  notes?: string;
+  createdAt: Date;
+}
+
+// borc: müşteriye kesilen iş/fatura (ekstrede borç)
+// tahsilat: müşteriden alınan ödeme (ekstrede alacak)
+// masraf: bu müşteri için bizim yaptığımız gider (sadece iç kullanım, ekstrede görünmez)
+export type CustomerTxKind = 'borc' | 'tahsilat' | 'masraf';
+
+export interface CustomerTransaction {
+  id: string;
+  companyId: string;
+  customerId: string;
+  kind: CustomerTxKind;
+  amount: number;
+  description: string;
+  date: string;           // YYYY-MM-DD
+  messageId?: string;     // Sohbetten geldiyse kaynak mesaj
+  createdAt: Date;
+}
+
+export interface CustomerMessage {
+  id: string;
+  companyId: string;
+  customerId: string;
+  text: string;
+  txIds: string[];        // Bu mesajdan oluşturulan kayıtlar
+  createdAt: Date;
+}

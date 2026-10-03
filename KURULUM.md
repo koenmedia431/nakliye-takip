@@ -116,3 +116,18 @@ NakliyeTakip/
 | 🚗 Araç Yönetimi | Plaka, marka, model, aktif/pasif durumu |
 | 📊 Raporlama | Aylık KM ve yakıt grafikleri, araç bazlı özet |
 | ☁️ Firebase | Gerçek zamanlı veri senkronizasyonu |
+
+## 5. Müşteri Cari Hesapları
+
+**Müşteriler** sekmesi (sadece yönetici görür) her müşteri için bir kart tutar. Kartta üç bölüm vardır:
+
+- **Sohbet:** Ne olduğunu düz yazıyla yazın, tutar/tür/tarih otomatik çıkarılıp listeye eklenir.
+  - `İzmir seferi 12.500 TL` → İş/Fatura (müşteri borcu)
+  - `Ahmet bey 5 bin ödedi`, `havale geldi 20000` → Tahsilat
+  - `dün otoban 450, yakıt 3.200` → iki ayrı Masraf
+  - `15.09`, `3 eylül`, `dün` gibi tarihler anlaşılır; yoksa bugünün tarihi kullanılır.
+  - Eklenen kayda dokunarak türünü/tutarını düzeltebilirsiniz; mesaja uzun basarak silebilirsiniz.
+- **Ekstre:** Müşteriye gönderilecek hesap dökümü (sadece iş ve tahsilatlar, yürüyen bakiye). "Ekstre Gönder" ile WhatsApp, e-posta vb. üzerinden paylaşılır.
+- **Masraflar:** Sadece size özel sayfa. Bu müşteri için yapılan giderler ve kâr hesabı; ekstreye girmez.
+
+Yeni koleksiyonlar: `companies/{id}/customers`, `customerTx`, `customerMessages`. Güncel `firestore.rules` dosyasını Firebase Console'da yeniden yayınlamayı unutmayın.
